@@ -391,9 +391,11 @@ void Viewport::_notification(int p_what) {
 
 			if (physics_object_picking && (to_screen_rect == Rect2() || Input::get_singleton()->get_mouse_mode() != Input::MOUSE_MODE_CAPTURED)) {
 
+#ifndef _3D_DISABLED
 				Vector2 last_pos(1e20, 1e20);
 				CollisionObject *last_object = NULL;
 				ObjectID last_id = 0;
+#endif
 				PhysicsDirectSpaceState::RayResult result;
 				Physics2DDirectSpaceState *ss2d = Physics2DServer::get_singleton()->space_get_direct_state(find_world_2d()->get_space());
 
@@ -659,7 +661,11 @@ void Viewport::_notification(int p_what) {
 			}
 
 		} break;
+		case SceneTree::NOTIFICATION_WM_MOUSE_EXIT:
 		case SceneTree::NOTIFICATION_WM_FOCUS_OUT: {
+
+			_drop_physics_mouseover();
+
 			if (gui.mouse_focus) {
 				//if mouse is being pressed, send a release event
 				_drop_mouse_focus();
@@ -2476,11 +2482,7 @@ void Viewport::_gui_hid_control(Control *p_control) {
 	if (gui.mouse_over == p_control)
 		gui.mouse_over = NULL;
 	if (gui.tooltip == p_control)
-		gui.tooltip = NULL;
-	if (gui.tooltip == p_control) {
-		gui.tooltip = NULL;
 		_gui_cancel_tooltip();
-	}
 }
 
 void Viewport::_gui_remove_control(Control *p_control) {
@@ -2559,6 +2561,31 @@ void Viewport::_drop_mouse_focus() {
 			c->call_multilevel(SceneStringNames::get_singleton()->_gui_input, mb);
 		}
 	}
+}
+
+void Viewport::_drop_physics_mouseover() {
+
+	physics_has_last_mousepos = false;
+
+	while (physics_2d_mouseover.size()) {
+		Object *o = ObjectDB::get_instance(physics_2d_mouseover.front()->key());
+		if (o) {
+			CollisionObject2D *co = Object::cast_to<CollisionObject2D>(o);
+			co->_mouse_exit();
+		}
+		physics_2d_mouseover.erase(physics_2d_mouseover.front());
+	}
+
+#ifndef _3D_DISABLED
+	if (physics_object_over) {
+		CollisionObject *co = Object::cast_to<CollisionObject>(ObjectDB::get_instance(physics_object_over));
+		if (co) {
+			co->_mouse_exit();
+		}
+	}
+
+	physics_object_over = physics_object_capture = 0;
+#endif
 }
 
 List<Control *>::Element *Viewport::_gui_show_modal(Control *p_control) {
@@ -3193,7 +3220,7 @@ Viewport::Viewport() {
 	gui.tooltip_timer = -1;
 
 	//gui.tooltip_timer->force_parent_owned();
-	gui.tooltip_delay = GLOBAL_DEF("gui/timers/tooltip_delay_sec", 0.7);
+	gui.tooltip_delay = GLOBAL_DEF("gui/timers/tooltip_delay_sec", 0.5);
 	ProjectSettings::get_singleton()->set_custom_property_info("gui/timers/tooltip_delay_sec", PropertyInfo(Variant::REAL, "gui/timers/tooltip_delay_sec", PROPERTY_HINT_RANGE, "0,5,0.01,or_greater")); // No negative numbers
 
 	gui.tooltip = NULL;

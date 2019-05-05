@@ -1466,6 +1466,9 @@ void main() {
 	float anisotropy = 0.0;
 	vec2 anisotropy_flow = vec2(1.0, 0.0);
 	float sss_strength = 0.0; //unused
+	// gl_FragDepth is not available in GLES2, so writing to DEPTH is not converted to gl_FragDepth by Godot compiler resulting in a
+	// compile error because DEPTH is not a variable.
+	float m_DEPTH = 0.0;
 
 	float alpha = 1.0;
 	float side = 1.0;
@@ -1542,6 +1545,11 @@ FRAGMENT_SHADER_CODE
 
 #ifdef BASE_PASS
 	//none
+
+#ifdef AMBIENT_LIGHT_DISABLED
+	ambient_light = vec3(0.0, 0.0, 0.0);
+#else
+
 #ifdef USE_RADIANCE_MAP
 
 	vec3 ref_vec = reflect(-eye_position, N);
@@ -1564,6 +1572,7 @@ FRAGMENT_SHADER_CODE
 
 #endif
 
+#endif // AMBIENT_LIGHT_DISABLED
 	ambient_light *= ambient_energy;
 
 #if defined(USE_REFLECTION_PROBE1) || defined(USE_REFLECTION_PROBE2)

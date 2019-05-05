@@ -407,7 +407,7 @@ void EditorSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	_initial_set("text_editor/theme/color_theme", "Adaptive");
 	hints["text_editor/theme/color_theme"] = PropertyInfo(Variant::STRING, "text_editor/theme/color_theme", PROPERTY_HINT_ENUM, "Adaptive,Default,Custom");
 	_initial_set("text_editor/theme/line_spacing", 6);
-	_initial_set("text_editor/theme/selection_color", Color::html("40808080"));
+	hints["text_editor/theme/line_spacing"] = PropertyInfo(Variant::INT, "text_editor/theme/line_spacing", PROPERTY_HINT_RANGE, "0,50,1");
 
 	_load_default_text_editor_theme();
 
@@ -430,6 +430,7 @@ void EditorSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	_initial_set("text_editor/line_numbers/show_line_numbers", true);
 	_initial_set("text_editor/line_numbers/line_numbers_zero_padded", false);
 	_initial_set("text_editor/line_numbers/show_breakpoint_gutter", true);
+	_initial_set("text_editor/line_numbers/show_info_gutter", true);
 	_initial_set("text_editor/line_numbers/code_folding", true);
 	_initial_set("text_editor/line_numbers/word_wrap", false);
 	_initial_set("text_editor/line_numbers/show_line_length_guideline", false);
@@ -459,12 +460,14 @@ void EditorSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	_initial_set("text_editor/cursor/right_click_moves_caret", true);
 
 	// Completion
-	_initial_set("text_editor/completion/idle_parse_delay", 2);
+	_initial_set("text_editor/completion/idle_parse_delay", 2.0);
+	hints["text_editor/completion/idle_parse_delay"] = PropertyInfo(Variant::REAL, "text_editor/completion/idle_parse_delay", PROPERTY_HINT_RANGE, "0.1, 10, 0.01");
 	_initial_set("text_editor/completion/auto_brace_complete", false);
 	_initial_set("text_editor/completion/put_callhint_tooltip_below_current_line", true);
 	_initial_set("text_editor/completion/callhint_tooltip_offset", Vector2());
 	_initial_set("text_editor/completion/complete_file_paths", true);
 	_initial_set("text_editor/completion/add_type_hints", false);
+	_initial_set("text_editor/completion/use_single_quotes", false);
 
 	// Help
 	_initial_set("text_editor/help/show_help_index", true);
@@ -635,7 +638,7 @@ void EditorSettings::_load_default_text_editor_theme() {
 	_initial_set("text_editor/highlighting/caret_color", Color::html("aaaaaa"));
 	_initial_set("text_editor/highlighting/caret_background_color", Color::html("000000"));
 	_initial_set("text_editor/highlighting/text_selected_color", Color::html("000000"));
-	_initial_set("text_editor/highlighting/selection_color", Color::html("6ca9c2"));
+	_initial_set("text_editor/highlighting/selection_color", Color::html("5a699ce8"));
 	_initial_set("text_editor/highlighting/brace_mismatch_color", Color(1, 0.2, 0.2));
 	_initial_set("text_editor/highlighting/current_line_color", Color(0.3, 0.5, 0.8, 0.15));
 	_initial_set("text_editor/highlighting/line_length_guideline_color", Color(0.3, 0.5, 0.8, 0.1));
@@ -645,6 +648,7 @@ void EditorSettings::_load_default_text_editor_theme() {
 	_initial_set("text_editor/highlighting/member_variable_color", Color::html("e64e59"));
 	_initial_set("text_editor/highlighting/mark_color", Color(1.0, 0.4, 0.4, 0.4));
 	_initial_set("text_editor/highlighting/breakpoint_color", Color(0.8, 0.8, 0.4, 0.2));
+	_initial_set("text_editor/highlighting/executing_line_color", Color(0.2, 0.8, 0.2, 0.4));
 	_initial_set("text_editor/highlighting/code_folding_color", Color(0.8, 0.8, 0.8, 0.8));
 	_initial_set("text_editor/highlighting/search_result_color", Color(0.05, 0.25, 0.05, 1));
 	_initial_set("text_editor/highlighting/search_result_border_color", Color(0.1, 0.45, 0.1, 1));
@@ -676,14 +680,14 @@ bool EditorSettings::_save_text_editor_theme(String p_file) {
 static Dictionary _get_builtin_script_templates() {
 	Dictionary templates;
 
-	//No Comments
+	// No Comments
 	templates["no_comments.gd"] =
 			"extends %BASE%\n"
 			"\n"
-			"func _ready():\n"
+			"func _ready()%VOID_RETURN%:\n"
 			"%TS%pass\n";
 
-	//Empty
+	// Empty
 	templates["empty.gd"] =
 			"extends %BASE%"
 			"\n"
@@ -833,6 +837,13 @@ void EditorSettings::create() {
 		} else {
 			dir->change_dir("..");
 		}
+
+		if (dir->change_dir("feature_profiles") != OK) {
+			dir->make_dir("feature_profiles");
+		} else {
+			dir->change_dir("..");
+		}
+
 		_create_script_templates(dir->get_current_dir().plus_file("script_templates"));
 
 		if (dir->change_dir("projects") != OK) {
@@ -1156,6 +1167,11 @@ String EditorSettings::get_script_templates_dir() const {
 String EditorSettings::get_cache_dir() const {
 
 	return cache_dir;
+}
+
+String EditorSettings::get_feature_profiles_dir() const {
+
+	return get_settings_dir().plus_file("feature_profiles");
 }
 
 // Metadata

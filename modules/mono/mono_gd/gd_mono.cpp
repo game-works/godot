@@ -30,6 +30,7 @@
 
 #include "gd_mono.h"
 
+#include <mono/metadata/environment.h>
 #include <mono/metadata/exception.h>
 #include <mono/metadata/mono-config.h>
 #include <mono/metadata/mono-debug.h>
@@ -212,7 +213,7 @@ void GDMono::initialize() {
 	String config_dir;
 
 #ifdef TOOLS_ENABLED
-#ifdef WINDOWS_ENABLED
+#if defined(WINDOWS_ENABLED)
 	mono_reg_info = MonoRegUtils::find_mono();
 
 	if (mono_reg_info.assembly_dir.length() && DirAccess::exists(mono_reg_info.assembly_dir)) {
@@ -222,7 +223,7 @@ void GDMono::initialize() {
 	if (mono_reg_info.config_dir.length() && DirAccess::exists(mono_reg_info.config_dir)) {
 		config_dir = mono_reg_info.config_dir;
 	}
-#elif OSX_ENABLED
+#elif defined(OSX_ENABLED)
 	const char *c_assembly_rootdir = mono_assembly_getrootdir();
 	const char *c_config_dir = mono_get_config_dir();
 
@@ -657,8 +658,6 @@ bool GDMono::_load_project_assembly() {
 
 	if (success) {
 		mono_assembly_set_main(project_assembly->get_assembly());
-
-		CSharpLanguage::get_singleton()->project_assembly_loaded();
 	} else {
 		if (OS::get_singleton()->is_stdout_verbose())
 			print_error("Mono: Failed to load project assembly");
@@ -865,7 +864,7 @@ Error GDMono::reload_scripts_domain() {
 		}
 	}
 
-	CSharpLanguage::get_singleton()->_uninitialize_script_bindings();
+	CSharpLanguage::get_singleton()->_on_scripts_domain_unloaded();
 
 	Error err = _load_scripts_domain();
 	if (err != OK) {
@@ -1008,7 +1007,9 @@ void GDMono::unhandled_exception_hook(MonoObject *p_exc, void *) {
 	if (ScriptDebugger::get_singleton())
 		ScriptDebugger::get_singleton()->idle_poll();
 #endif
-	abort();
+
+	exit(mono_environment_exitcode_get());
+
 	GD_UNREACHABLE();
 }
 

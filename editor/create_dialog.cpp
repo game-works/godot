@@ -238,6 +238,26 @@ void CreateDialog::add_type(const String &p_type, HashMap<String, TreeItem *> &p
 	p_types[p_type] = item;
 }
 
+bool CreateDialog::_is_class_disabled_by_feature_profile(const StringName &p_class) {
+
+	Ref<EditorFeatureProfile> profile = EditorFeatureProfileManager::get_singleton()->get_current_profile();
+	if (profile.is_null()) {
+		return false;
+	}
+
+	StringName class_name = p_class;
+
+	while (class_name != StringName()) {
+
+		if (profile->is_class_disabled(class_name)) {
+			return true;
+		}
+		class_name = ClassDB::get_parent_class(class_name);
+	}
+
+	return false;
+}
+
 void CreateDialog::_update_search() {
 
 	search_options->clear();
@@ -264,6 +284,10 @@ void CreateDialog::_update_search() {
 	for (List<StringName>::Element *I = type_list.front(); I; I = I->next()) {
 
 		String type = I->get();
+
+		if (_is_class_disabled_by_feature_profile(type)) {
+			continue;
+		}
 		bool cpp_type = ClassDB::class_exists(type);
 
 		if (base_type == "Node" && type.begins_with("Editor"))
@@ -697,6 +721,7 @@ CreateDialog::CreateDialog() {
 	favorites->connect("cell_selected", this, "_favorite_selected");
 	favorites->connect("item_activated", this, "_favorite_activated");
 	favorites->set_drag_forwarding(this);
+	favorites->add_constant_override("draw_guides", 1);
 
 	VBoxContainer *rec_vb = memnew(VBoxContainer);
 	vsc->add_child(rec_vb);
@@ -709,6 +734,7 @@ CreateDialog::CreateDialog() {
 	recent->set_hide_folding(true);
 	recent->connect("cell_selected", this, "_history_selected");
 	recent->connect("item_activated", this, "_history_activated");
+	recent->add_constant_override("draw_guides", 1);
 
 	VBoxContainer *vbc = memnew(VBoxContainer);
 	hsc->add_child(vbc);
